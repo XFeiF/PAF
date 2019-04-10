@@ -35,6 +35,7 @@ def init_path_config(main_file):
 
     # local
     # gv['ImageNet100_dir'] = '/data/DataSets/MyImagenet'
+    gv['CIFAR10_dir'] = '/data/DataSets/cifar10'
     # 15
     gv['ImageNet100_dir'] = '/home/feifei/datasets/MyImagenet'
 

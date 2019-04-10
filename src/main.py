@@ -19,6 +19,7 @@ if __name__ == '__main__':
                     'dataset': config.dataset,
                     'img_size': config.img_size,
                     'ImageNet100_dir': config.ImageNet100_dir,
+                    'CIFAR10_dir': config.CIFAR10_dir,
                     'model': config.model,
                     'optimizer': config.optimizer,
                     'action': config.action,

@@ -100,10 +100,54 @@ class BaseLoader:
         return classes, torch.stack(images)
 
 
+class CIFAR10(BaseLoader):
+    mean = [0.4914, 0.4822, 0.4465]
+    std = [0.2470, 0.2435, 0.2616]
+    num_classes = 10
+    class_names = ('plane', 'car', 'bird', 'cat', 'deer',
+                   'dog', 'frog', 'horse', 'ship', 'truck')
+    def __init__(self, args):
+        super(CIFAR10, self).__init__(args)
+        self.base_dir = args['CIFAR10_dir']
+        self.mean = CIFAR10.mean
+        self.std = CIFAR10.std
+        self.class_names = CIFAR10.class_names
+
+    @property
+    def dataset_train(self):
+        if self._dataset_train is None:
+            tf = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(32, 4),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)])
+            self._dataset_train = torchvision.datasets.CIFAR10(
+                root=self.base_dir, train=True, transform=tf)
+        return self._dataset_train
+
+    @property
+    def dataset_eval(self):
+        if self._dataset_eval is None:
+            tf = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)])
+            self._dataset_eval = torchvision.datasets.CIFAR10(
+                root=self.base_dir, train=False, transform=tf)
+        return self._dataset_eval
+
+    @property
+    def dataset_norm(self):
+        if self._dataset_norm is None:
+            self._dataset_norm = torchvision.datasets.CIFAR10(
+                self.base_dir, transform=transforms.ToTensor())
+        return self._dataset_norm
+
+
 class ImageNet100(BaseLoader):
     mean = [0.47881872, 0.45927624, 0.41515172]
     std = [0.27191086, 0.26549916, 0.27758414]
     num_classes = 100
+    class_names = [str(i) for i in range(num_classes)]
 
     def __init__(self, args):
         super(ImageNet100, self).__init__(args)
@@ -111,6 +155,7 @@ class ImageNet100(BaseLoader):
         self.base_dir = args['ImageNet100_dir']
         self.mean = ImageNet100.mean
         self.std = ImageNet100.std
+
     @property
     def dataset_train(self):
         if self._dataset_train is None:
@@ -190,6 +235,8 @@ class ImageNet100(BaseLoader):
 def get_dataloader(args):
     if args['dataset'] == 'ImageNet100':
         return ImageNet100(args)
+    if args['dataset'] == 'CIFAR10':
+        return CIFAR10(args)
     else:
         raise ValueError('No dataset: {}'.format(args['dataset']))
 

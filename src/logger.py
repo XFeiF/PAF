@@ -124,13 +124,11 @@ class ProgressBarLog:
         sys.stdout.write(']')
 
         cur_time = time.time()
-        step_time = cur_time - self.pb_last_time
         self.pb_last_time = cur_time
         tot_time = cur_time - self.pb_begin_time
 
         L = []
-        L.append('  Step: %s' % format_time(step_time))
-        L.append(' | Tot: %s' % format_time(tot_time))
+        L.append('Tot: %s' % format_time(tot_time))
         if msg:
             L.append(' | ' + msg)
 

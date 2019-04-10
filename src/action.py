@@ -6,6 +6,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from sklearn.metrics import confusion_matrix
+from src import tool
 
 
 class BaseAction:
@@ -14,16 +16,19 @@ class BaseAction:
     eval_legend = ['| acc: {:0<5.3f}%']
 
     @staticmethod
-    def cal_loss(x, y, net):
-        y_hat = net(x)
+    def cal_logits(x, net):
+        return net(x)
+
+    @staticmethod
+    def cal_loss(y, y_hat):
         loss = F.cross_entropy(y_hat, y)
         return loss,
 
     @staticmethod
-    def cal_eval(x, y, net):
+    def cal_eval(y, y_hat):
         count_right = np.empty(1, np.float32)
         count_sum = np.empty(1, np.float32)
-        y_hat = net(x).argmax(1)
+        y_hat = y_hat.argmax(1)
         count_right[0] = (y_hat == y).sum().item()
         count_sum[0] = y.size(0)
         return 100 * count_right, count_sum
@@ -42,6 +47,46 @@ class BaseAction:
                 torch.optim.Adam(net.parameters(), lr=lr * decay[times])
         else:
             return None
+
+    @staticmethod
+    def save_model(ism, model, path, *args):
+        ''''
+        ism, model, path, msg, pblog, acc, epoch
+        '''
+        acc, epoch = args
+        if ism:
+            state_dict = model.module.state_dict()
+        else:
+            state_dict = model.state_dict()
+        state = {
+            'net': state_dict,
+            'acc': acc,
+            'epoch': epoch}
+        torch.save(state, path)
+
+    @staticmethod
+    def save_graph(model, img_size, tblog, pblog):
+        dummyInput = torch.randn([1, 3, img_size, img_size]).cuda()
+        tblog.add_graph(model, dummyInput)
+        pblog.debug('Graph saved')
+
+    @staticmethod
+    def cal_scalars(metric, metric_legend, msg, pblog):
+        scalars = dict()
+        for n, s in zip(metric, metric_legend):
+            msg += s.format(n)
+            scalars[s.split(':')[0][2:]] = n
+        pblog.info(msg)
+        return scalars
+
+    @staticmethod
+    def log_confusion_matrix(labels, predictions, class_names):
+        cm = confusion_matrix(labels, predictions)
+        # normalise confusion matrix for diff sized groups
+        cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+        cm_image = tool.plot_confusion_matrix(cm_norm, class_names)
+        return cm_image
+
 
 def get_action(args):
     action = args['action']
