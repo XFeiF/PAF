@@ -5,15 +5,8 @@
 '''
 import argparse
 import os
-import sys
-import time
-import functools
-from os.path import join, exists
-from datetime import datetime
+from os.path import exists
 from src import config
-import traceback
-import logging
-import logging.handlers
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
@@ -49,6 +42,8 @@ def gen_parser():
                         help='pre train')
     parser.add_argument('--batch_size', type=int, default=64,
                         help='batch for all')
+    parser.add_argument('--save_cm', action='store_true', default=False,
+                        help='save confusion matrix')
 
     # result
     parser.add_argument('--no_eval', action='store_true', default=False,

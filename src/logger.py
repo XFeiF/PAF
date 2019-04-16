@@ -3,13 +3,11 @@
 @url: x-fei.me
 @time: 2019-04-09 15:30
 '''
-import os
 import sys
 import time
 import functools
 from os.path import join, exists
 from datetime import datetime
-import traceback
 import logging
 import logging.handlers
 from src import config, tool
@@ -116,10 +114,10 @@ class ProgressBarLog:
         rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
 
         sys.stdout.write(' [')
-        for i in range(cur_len):
+        for _ in range(cur_len):
             sys.stdout.write('=')
         sys.stdout.write('>')
-        for i in range(rest_len):
+        for _ in range(rest_len):
             sys.stdout.write('.')
         sys.stdout.write(']')
 

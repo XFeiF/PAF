@@ -4,8 +4,7 @@
 @time: 2019-04-08 18:43
 '''
 import os
-from os.path import join, exists
-import shutil
+from os.path import join
 from PIL import Image
 import numpy as np
 import torch
@@ -76,16 +75,8 @@ class BaseLoader:
                                                    pin_memory=True)
         return self.dataloader_test
 
-    def cal_norm(self):
-        ds = self.dataset_norm
-        dl = Data.DataLoader(dataset=ds, batch_size=len(ds),
-                             num_workers=self.num_workers, pin_memory=True)
-        for x, y in dl:
-            x = x.cuda(non_blocking=True)
-            print('mean: ', x[:, 0, :, :].mean().item(),
-                  x[:, 1, :, :].mean().item(), x[:, 2, :, :].mean().item())
-            print('std: ', x[:, 0, :, :].std().item(),
-                  x[:, 1, :, :].std().item(), x[:, 2, :, :].std().item())
+    def cal_norm(self, n=1):
+        return None
 
     @staticmethod
     def random_sample_base(base_dir, transform, size):
@@ -93,9 +84,9 @@ class BaseLoader:
         classes.sort()
         images = []
         for c in classes:
-            folder = join(bdir, c)
+            folder = join(base_dir, c)
             for file_name in np.random.choice(os.listdir(folder), size, False):
-                img = join(c_folder, file_name)
+                img = join(folder, file_name)
                 images.append(transform(Image.open(img)))
         return classes, torch.stack(images)
 
@@ -155,19 +146,20 @@ class ImageNet100(BaseLoader):
         self.base_dir = args['ImageNet100_dir']
         self.mean = ImageNet100.mean
         self.std = ImageNet100.std
+        self.img_size = args['img_size']
 
     @property
     def dataset_train(self):
         if self._dataset_train is None:
             tf = transforms.Compose([
-                transforms.Resize(224),
+                transforms.Resize(self.img_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.ColorJitter(0.02, 0.02, 0.02, 0.01),
                 transforms.RandomRotation([-180, 180]),
                 transforms.RandomAffine([-180, 180], translate=[0.1, 0.1],
                                         scale=[0.7, 1.3]),
-                transforms.RandomCrop(224),
+                transforms.RandomCrop(self.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std)
             ])
@@ -179,8 +171,8 @@ class ImageNet100(BaseLoader):
     def dataset_eval(self):
         if self._dataset_eval is None:
             tf = transforms.Compose([
-                transforms.Resize(224),
-                transforms.RandomCrop(224),
+                transforms.Resize(self.img_size),
+                transforms.RandomCrop(self.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std)
             ])
@@ -192,8 +184,8 @@ class ImageNet100(BaseLoader):
     def dataset_norm(self):
         if self._dataset_norm is None:
             tf = transforms.Compose([
-                transforms.Resize(224),
-                transforms.RandomCrop(224),
+                transforms.Resize(self.img_size),
+                transforms.RandomCrop(self.img_size),
                 transforms.ToTensor()
             ])
             self._dataset_norm = ImageFolder(join(self.base_dir, 'train'),
@@ -208,7 +200,7 @@ class ImageNet100(BaseLoader):
         for i in range(n):
             print('times:{}'.format(i))
             ll = len(dl)
-            for idx, (x, y) in enumerate(dl):
+            for idx, (x, _) in enumerate(dl):
                 print('iter {} of {}'.format(idx, ll))
                 x = x.cuda(non_blocking=True)
                 m1 += x[:, 0, :, :].mean().item()

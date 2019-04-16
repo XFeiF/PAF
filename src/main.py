@@ -3,7 +3,7 @@
 @url: x-fei.me
 @time: 2019-04-09 17:06
 '''
-from src import config, tool, agent, logger
+from src import config, agent, logger
 
 if __name__ == '__main__':
     config.init_path_config(__file__)
@@ -31,7 +31,8 @@ if __name__ == '__main__':
                     'batch_size': config.batch_size,
                     'lr': config.lr,
                     'lr_epoch': config.lr_epoch,
-                    'no_eval': config.no_eval}
+                    'no_eval': config.no_eval,
+                    'save_cm': config.save_cm}
             agent.Trainer(args).train()
         else:
             raise ValueError('No cmd: {}'.format(config.cmd))

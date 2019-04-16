@@ -3,7 +3,7 @@
 @url: x-fei.me
 @time: 2019-04-08 21:26
 '''
-from os.path import join, realpath, dirname, abspath
+from os.path import join, dirname, abspath
 from src import tool
 
 # Basic project info
@@ -37,10 +37,6 @@ def init_path_config(main_file):
     # gv['ImageNet100_dir'] = '/data/DataSets/MyImagenet'
     gv['CIFAR10_dir'] = '/data/DataSets/cifar10'
     # 15
-    gv['ImageNet100_dir'] = '/home/feifei/datasets/MyImagenet'
-
-
-
-
-
-
+    # gv['ImageNet100_dir'] = '/home/feifei/datasets/MyImagenet'
+    # 16
+    gv['ImageNet100_dir'] = '/data0/feifei/datasets/MyImagenet'

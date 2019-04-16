@@ -4,12 +4,9 @@
 @time: 2019-04-09 11:53
 '''
 import os
-from os.path import join, exists
-import shutil
+from os.path import join
 import numpy as np
-from PIL import Image
 import torch
-import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 from src import tool, logger
 from src import dataset as DataSet
@@ -20,9 +17,16 @@ from src import action as Action
 class Trainer:
 
     def __init__(self, args):
+        # cuda setting
         os.environ["CUDA_VISIBLE_DEVICES"] = args['cuda']
+
+        # dir setting
         self.model_dir = args['model_dir']
         self.best_model_dir = args['best_model_dir']
+        tool.check_mkdir(self.model_dir)
+        tool.check_mkdir(self.best_model_dir)
+
+        # dataset setting
         self.dataloader = DataSet.get_dataloader(args)
         self.no_eval = args['no_eval']
         self.img_size = args['img_size']
@@ -30,39 +34,43 @@ class Trainer:
         args['std'] = self.dataloader.std
         args['num_classes'] = self.dataloader.num_classes
 
-        self.action = Action.get_action(args)
-        self.model = Model.get_net(args)
-
-        self.model_desc = '{}_{}_{}_{}'. \
-            format(args['dataset'], args['model'], args['action'], args['desc'])
-        self.model_pkl = self.model_desc + '.ckpt'
-
-        if args['pre_train']:
-            state_dir = join(self.model_dir, self.model_desc)
-            state = torch.load(state_dir, map_location='cpu')
-            self.model.load_state_dict(state['net'])
-        self.model.cuda()
-        if torch.cuda.device_count() > 1:
-            self.model = torch.nn.DataParallel(self.model)
-            self.ism = True
-        else:
-            self.ism = False
-
+        # basic setting
         self.opt_type = args['optimizer']
         self.lr = args['lr']
         self.lr_epoch = args['lr_epoch']
         self.epoch = args['epoch']
         self.eval_best = 0
         self.eval_best_epoch = 0
+        self.save_cm = args['save_cm']  # save confusion matrix
 
-        # logger
+        # model name config
+        self.model_desc = '{}_{}_{}_{}'. \
+            format(args['dataset'], args['model'], args['action'], args['desc'])
+        self.model_pkl = self.model_desc + '.ckpt'
+
+        # logger setup
         self.pblog = logger.get_pblog()
         self.pblog.total = self.epoch
         self.tblog = SummaryWriter(join(args['tb_dir'], self.model_desc))
-        self.action.save_graph(self.model, self.img_size, self.tblog,
-                               self.pblog)
-        tool.check_mkdir(self.model_dir)
-        tool.check_mkdir(self.best_model_dir)
+
+        # model setup
+        self.action = Action.get_action(args)
+        self.model = Model.get_net(args)
+
+        if args['pre_train']:
+            state_dir = join(self.model_dir, self.model_desc)
+            state = torch.load(state_dir, map_location='cpu')
+            self.model.load_state_dict(state['net'])
+        self.model.cuda()
+        # self.action.save_graph(self.model, self.img_size, self.tblog,
+        #                        self.pblog)
+
+        if torch.cuda.device_count() > 1:
+            self.model = torch.nn.DataParallel(self.model)
+            # ism: IS using Multiple gpus
+            self.ism = True
+        else:
+            self.ism = False
 
     def __del__(self):
         if hasattr(self, 'tb_log'):
@@ -105,7 +113,7 @@ class Trainer:
                 loss_n.append(ty.size(0))
                 main_loss += loss[0].item()
                 self.pblog.pb(idx, dl_len, 'Loss: %.5f | Acc: %.3f%%' % (
-                              main_loss / (idx + 1), c_right/c_sum))
+                    main_loss / (idx + 1), c_right / c_sum))
             loss_l = np.array(loss_l).T
             loss_n = np.array(loss_n)
             loss = (loss_l * loss_n).sum(axis=1) / loss_n.sum()
@@ -158,9 +166,11 @@ class Trainer:
         acc_scalars = self.action.cal_scalars(c_res, self.action.eval_legend,
                                               msg, self.pblog)
         self.tblog.add_scalars('eval/eval', acc_scalars, epoch)
-        cm_figure = self.action.log_confusion_matrix(labels, predictions,
-                                                     self.dataloader.class_names)
-        self.tblog.add_figure('Confusion Matrix', cm_figure, epoch)
+
+        if self.save_cm:
+            cm_figure = self.action.log_confusion_matrix(labels, predictions,
+                                                         self.dataloader.class_names)
+            self.tblog.add_figure('Confusion Matrix', cm_figure, epoch)
 
         if c_res[0] > self.eval_best and epoch > 30:
             self.eval_best_epoch = epoch
@@ -168,4 +178,4 @@ class Trainer:
             path = os.path.join(self.best_model_dir, 'Best_' + self.model_desc)
             self.action.save_model(self.ism, self.model, path, self.eval_best,
                                    self.eval_best_epoch)
-            self.pblog('Update the best model')
+            self.pblog.debug('Update the best model')
